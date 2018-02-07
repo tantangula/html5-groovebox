@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="pixi.js"></script>
+    <script src="tone.js"></script>
+    <style>
+        html,
+        div,
+        canvas {
+            margin: 0 0 0 0;
+            padding: 0 0 0 0;
+        }
+
+        body {
+            margin: 5px 0 0 5px;
+            padding: 0 0 0 0;
+        }
+    </style>
+</head>
+
+<body>
+    <script>
+        var w = window.innerWidth;
+        var h = window.innerHeight;
+        var fillColor = Math.random() * 0xFFFFFF;
+        var lineColor = Math.random() * 0xFFFFFF;
+        var notes = ["C3", "G3", "E3", "B3","C4", "G4", "E4", "B4"];
+        var possibleNotes = ["A2","B2","C3","D3","E3","F3","G3","A3","B3","C4","D4","E4","F4","G4","A4","B4","C5","D5","E5","F5","G5"]
+
+        var renderer = PIXI.autoDetectRenderer(w - 10, h - 10, {
+            backgroundColor: Math.random() * 0xFFFFFF
+        });
+        document.body.appendChild(renderer.view);
+
+        // create the root of the scene graph
+        var stage = new PIXI.Container();
+
+        var dynamicSliderWidth = (w - 100)/8;
+
+        var slider01 = new slider(10 +((10 + dynamicSliderWidth) * 0), 10, dynamicSliderWidth, h-30, 0);
+
+        var slider02 = new slider(10 +((10 + dynamicSliderWidth) * 1), 10, dynamicSliderWidth, h-30, 1);
+
+        var slider03 = new slider(10 +((10 + dynamicSliderWidth) * 2), 10, dynamicSliderWidth, h-30, 2);
+
+        var slider04 = new slider(10 +((10 + dynamicSliderWidth) * 3), 10, dynamicSliderWidth, h-30, 3);
+
+        var slider05 = new slider(10 +((10 + dynamicSliderWidth) * 4), 10, dynamicSliderWidth, h-30, 4);
+
+        var slider06 = new slider(10 +((10 + dynamicSliderWidth) * 5), 10, dynamicSliderWidth, h-30, 5);
+
+        var slider07 = new slider(10 +((10 + dynamicSliderWidth) * 6), 10, dynamicSliderWidth, h-30, 6);
+
+        var slider08 = new slider(10 +((10 + dynamicSliderWidth) * 7), 10, dynamicSliderWidth, h-30, 7);
+
+        var position = 0;
+
+        var synth = new Tone.FMSynth().toMaster();
+
+        Tone.Transport.setInterval(function(time){
+          var note = notes[position];
+          if(position == notes.length - 1)
+          {
+            position = 0;
+          }
+          else
+          {
+            position++;
+          }
+          synth.triggerAttackRelease(note, 0.5, time);
+        }, 0.15);
+
+        //the transport won't start firing events until it's started
+        Tone.Transport.start()
+
+        // run the render loop
+        animate();
+
+        function animate() {
+
+            renderer.render(stage);
+            requestAnimationFrame(animate);
+
+        }
+
+        function slider(left, top, width, height, toneParameter) {
+
+            var _this = this;
+
+            this.sliderLeft = left;
+            this.sliderTop = top;
+            this.sliderWidth = width;
+            this.sliderHeight = height;
+            this.toneParameter = toneParameter;
+            this.clickPoint = null;
+            this.bottomCorner = new PIXI.Point(left, top + height);
+            this.innerTangle = new PIXI.Graphics();
+            this.innerTangle.lineStyle(2, lineColor, 1);
+            this.innerTangle.beginFill(fillColor, 1);
+            this.innerTangle.drawRect(this.bottomCorner.x, this.bottomCorner.y, width, -10);
+            this.innerTangle.endFill();
+            this.outerTangle = new PIXI.Graphics();
+            this.outerTangle.lineStyle(2, lineColor, 1);
+            this.outerTangle.beginFill(0xFFFFFF, 0);
+            this.outerTangle.drawRect(left, top, width, height);
+            this.outerTangle.endFill();
+            this.outerTangle.interactive = true;
+
+            this.onDragStart = function(event) {
+
+                this.data = event.data;
+
+                _this.clickPoint = this.data.getLocalPosition(this.parent);
+                _this.clickPoint.y -= _this.bottomCorner.y;
+
+                if (_this.clickPoint.y >= 0) {
+                    _this.clickPoint.y = 0;
+                } else if ((_this.clickPoint.y <= -1 * _this.sliderHeight)) {
+                    _this.clickPoint.y = -1 * _this.sliderHeight;
+                }
+
+                var sliderPercent = ((_this.clickPoint.y * -1)/_this.sliderHeight)*100;
+
+                var value = (sliderPercent/5).toFixed(0);
+
+                notes[_this.toneParameter] = possibleNotes[value];
+
+                console.log(value);
+
+                _this.innerTangle.clear();
+                _this.innerTangle.lineStyle(2, lineColor, 1);
+                _this.innerTangle.beginFill(fillColor, 1);
+                _this.innerTangle.drawRect(_this.bottomCorner.x, _this.bottomCorner.y, _this.sliderWidth, _this.clickPoint.y);
+                _this.innerTangle.endFill();
+
+                this.dragging = true;
+
+            };
+
+            this.onDragEnd = function() {
+
+                this.dragging = false;
+
+                // set the interaction data to null
+                this.data = null;
+
+            };
+
+            this.onDragMove = function() {
+
+                if (this.dragging) {
+                    _this.clickPoint = this.data.getLocalPosition(this.parent);
+                    _this.clickPoint.y -= _this.bottomCorner.y;
+
+                    if (_this.clickPoint.y >= 0) {
+                        _this.clickPoint.y = 0;
+                    } else if ((_this.clickPoint.y <= -1 * _this.sliderHeight)) {
+                        _this.clickPoint.y = -1 * _this.sliderHeight;
+                    }
+
+                    var sliderPercent = ((_this.clickPoint.y * -1)/_this.sliderHeight)*100;
+
+                    var value = (sliderPercent/5).toFixed(0);
+
+                    notes[_this.toneParameter] = possibleNotes[value];
+
+                    console.log(value);
+
+                    _this.innerTangle.clear();
+                    _this.innerTangle.lineStyle(2, lineColor, 1);
+                    _this.innerTangle.beginFill(fillColor, 1);
+                    _this.innerTangle.drawRect(_this.bottomCorner.x, _this.bottomCorner.y, _this.sliderWidth, _this.clickPoint.y);
+                    _this.innerTangle.endFill();
+                }
+
+            };
+
+            this.outerTangle
+                .on('mousedown', this.onDragStart)
+                .on('touchstart', this.onDragStart)
+                // events for drag end
+                .on('mouseup', this.onDragEnd)
+                .on('mouseupoutside', this.onDragEnd)
+                .on('touchend', this.onDragEnd)
+                .on('touchendoutside', this.onDragEnd)
+                // events for drag move
+                .on('mousemove', this.onDragMove)
+                .on('touchmove', this.onDragMove);
+
+            stage.addChild(this.innerTangle);
+            stage.addChild(this.outerTangle);
+
+        }
+    </script>
+</body>
+
+</html>
